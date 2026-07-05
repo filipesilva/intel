@@ -1,2 +1,2 @@
-{:paths ["src" "test" "resources"]
+{:paths ["src" "test"]
  :deps  {}}
