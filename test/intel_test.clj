@@ -1,6 +1,6 @@
-(ns filipesilva.intel-test
+(ns intel-test
   (:require [clojure.test :refer [deftest is testing]]
-            [filipesilva.intel :as intel]))
+            [intel :as intel]))
 
 (def ^:private resolve-seeds @#'intel/resolve-seeds)
 (def ^:private q-in-syms @#'intel/q-in-syms)

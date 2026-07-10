@@ -1,12 +1,12 @@
-(ns filipesilva.intel
+(ns intel
   "Analyse your Clojure code with Datalog."
   (:require [babashka.cli :as cli]
             [babashka.fs :as fs]
             [babashka.process :as p]
             [clojure.edn :as edn]
             [clojure.string :as str]
-            [filipesilva.intel.db :as db]
-            [filipesilva.intel.graph :as graph]))
+            [intel.db :as db]
+            [intel.graph :as graph]))
 
 (def help
   "intel: analyse your Clojure code with Datalog

@@ -1,6 +1,6 @@
-(ns filipesilva.intel.graph-test
+(ns intel.graph-test
   (:require [clojure.test :refer [deftest is testing]]
-            [filipesilva.intel.graph :as graph]))
+            [intel.graph :as graph]))
 
 (deftest rel-file-test
   (let [base "/repo"]

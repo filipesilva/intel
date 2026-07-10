@@ -1,4 +1,4 @@
-(ns filipesilva.intel.graph
+(ns intel.graph
   "Pure functions over the var graph: globs, traversal, diff hunks, dead vars."
   (:require [babashka.fs :as fs]
             [clojure.string :as str]))

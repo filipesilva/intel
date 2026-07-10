@@ -116,5 +116,5 @@ that noise.
 
 ```sh
 bb test                      # unit tests
-bb -m filipesilva.intel ...  # run from source
+bb -m intel ...  # run from source
 ```

@@ -1,12 +1,12 @@
-{:bbin/bin       {intel {:main-opts ["-m" "filipesilva.intel"]}}
+{:bbin/bin       {intel {:main-opts ["-m" "intel"]}}
  :min-bb-version "1.12.208"
  :deps           {io.github.filipesilva/intel {:local/root "."}}
  :paths          ["src" "test"]
  :tasks          {test {:requires ([clojure.test :as t]
-                                   [filipesilva.intel-test]
-                                   [filipesilva.intel.graph-test])
+                                   [intel-test]
+                                   [intel.graph-test])
                         :task     (let [{:keys [fail error]}
-                                        (t/run-tests 'filipesilva.intel.graph-test
-                                                     'filipesilva.intel-test)]
+                                        (t/run-tests 'intel.graph-test
+                                                     'intel-test)]
                                     (when (pos? (+ fail error))
                                       (System/exit 1)))}}}

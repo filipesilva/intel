@@ -1,11 +1,11 @@
-(ns filipesilva.intel.db
+(ns intel.db
   "Datalevin storage and clj-kondo analysis."
   (:require [babashka.fs :as fs]
             [babashka.pods :as pods]
             [babashka.process :as p]
             [clojure.edn :as edn]
             [clojure.string :as str]
-            [filipesilva.intel.graph :as graph]))
+            [intel.graph :as graph]))
 
 (pods/load-pod 'huahaiy/datalevin "0.10.7")
 (require '[pod.huahaiy.datalevin :as d])
