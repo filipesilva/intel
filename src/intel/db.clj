@@ -131,10 +131,35 @@
 (defn- sym->ns-ent [s]
   {:sym s :ns (if-let [n (namespace s)] (symbol n) s)})
 
+(def ^:private kondo-pod-version "2025.07.26")
+
+(defn file-usages
+  "clj-kondo var-usage positions for one file: {[row col] -> fq-sym}.
+  Every usage is included, clojure.core macros too, so callers can both
+  resolve symbols and recognize control forms by position."
+  [file]
+  (pods/load-pod 'clj-kondo/clj-kondo kondo-pod-version)
+  (let [run!   (requiring-resolve 'pod.borkdude.clj-kondo/run!)
+        usages (-> (run! {:lint [(str file)]
+                          :config {:analysis true :skip-comments true}})
+                   :analysis :var-usages)]
+    (reduce (fn [m u]
+              (let [pos [(:name-row u) (:name-col u)]
+                    fq  (graph/fq (:to u) (:name u))
+                    cur (m pos)]
+                ;; cljc twins share positions; prefer the clj resolution
+                (if (or (nil? cur)
+                        (and (str/starts-with? (str cur) "cljs.")
+                             (not (str/starts-with? (str fq) "cljs."))))
+                  (assoc m pos fq)
+                  m)))
+            {}
+            (filter #(and (symbol? (:to %)) (:name-row %)) usages))))
+
 (defn analyse!
   "Rebuild the db from clj-kondo analysis of paths. Returns summary counts."
   [paths]
-  (pods/load-pod 'clj-kondo/clj-kondo "2025.07.26")
+  (pods/load-pod 'clj-kondo/clj-kondo kondo-pod-version)
   (let [run!     (requiring-resolve 'pod.borkdude.clj-kondo/run!)
         analysis (:analysis
                   (run! {:lint paths

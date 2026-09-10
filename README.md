@@ -81,6 +81,39 @@ $ intel deps 'myapp.*' -d 0 --count --no-test | head     # biggest closures
 $ intel deps 'myapp.domain.*' -d 0 --filter 'myapp.web.*'  # layering violations
 ```
 
+## Reading code semantically
+
+`intel describe` renders one var's body as a tree of the vars it uses, in
+source order: `?` marks a var behind (or deciding) a conditional, `*` marks a
+var behind a loop, and nesting shows what a guard gates. clojure.core is
+elided; project and library vars both show.
+
+```sh
+$ intel describe intel/cmd-deps
+intel/cmd-deps
+  [direction args opts]
+  ? intel/fail!
+  ? * intel/stdin-seed
+      intel/stdin-syms
+  intel.db/with-db
+  intel.db/load-graph
+  intel/resolve-seeds
+  intel/emit-closure
+```
+
+Add `--http` (and optionally `--port N`, default 7373) to read the same tree
+as stacked panes in the browser, in the spirit of Obsidian's stacked tabs and
+Andy Matuschak's sliding notes: the first pane describes the entry var, and
+selecting any var opens the next pane with every var it mentions expanded.
+
+```sh
+$ intel describe intel/cmd-deps --http
+describe server at http://localhost:7373/
+```
+
+`describe` is experimental. It re-reads the var's source at call time, so it
+stays honest about the file even when the rest of the db is stale.
+
 ## Custom queries
 
 The schema is small enough to hold in your head; `intel schema` prints it

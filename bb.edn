@@ -4,9 +4,11 @@
  :paths          ["src" "test"]
  :tasks          {test {:requires ([clojure.test :as t]
                                    [intel-test]
+                                   [intel.describe-test]
                                    [intel.graph-test])
                         :task     (let [{:keys [fail error]}
                                         (t/run-tests 'intel.graph-test
+                                                     'intel.describe-test
                                                      'intel-test)]
                                     (when (pos? (+ fail error))
                                       (System/exit 1)))}}}

@@ -6,6 +6,7 @@
             [clojure.edn :as edn]
             [clojure.string :as str]
             [intel.db :as db]
+            [intel.describe :as describe]
             [intel.graph :as graph]))
 
 (def help
@@ -22,6 +23,9 @@ usage:
                                add --test for the tests to run
   intel dead [PATTERN...]      public vars unused, or used only by tests
   intel untested [PATTERN...]  public vars no test reaches transitively
+  intel describe VAR           a var's body as a tree of the vars it uses:
+                               ? = behind a conditional, * = behind a loop
+                               (--http serves click-to-expand stacked panes)
   intel q [QUERY|-] [ARG...]   raw datalog query, - reads it from stdin
                                (also: -f FILE, --rules FILE)
   intel schema                 schema, rules, and example queries
@@ -43,6 +47,8 @@ options (deps, _deps, affected; filters also on ls, dead, untested):
       --generated   include defrecord/deftype generated vars (dead, untested)
   -l, --long        append file:row and private/test flags
       --edn         EDN output
+      --http        (describe) serve the description over http
+      --port N      (describe) http port (default 7373)
 
 globs: * matches anything, ? one char; a bare namespace matches its vars.
 exit codes: 0 results, 1 no results, 2 error.
@@ -69,6 +75,8 @@ recipes:
    :generated {:coerce :boolean}
    :long      {:alias :l :coerce :boolean}
    :edn       {:coerce :boolean}
+   :http      {:coerce :boolean}
+   :port      {:coerce :long}
    :file      {:alias :f}
    :rules     {}
    :help      {:alias :h :coerce :boolean}})
@@ -314,6 +322,20 @@ recipes:
                                 (when (:long opts) (long-cols attrs sym))))
                         dead)))))
 
+(defn- cmd-describe [args opts]
+  (when-not (= 1 (count args))
+    (fail! "describe needs exactly one VAR"))
+  (let [sym (symbol (first args))
+        g   (gather-graph)]
+    (when-not (get-in g [:graph :attrs sym])
+      (fail! (str "unknown sym: " sym)))
+    (if (:http opts)
+      (describe/serve! g sym opts)
+      (let [data (describe/describe g sym)]
+        (if (:edn opts)
+          (do (prn data) 0)
+          (do (print (describe/render data)) (flush) 0))))))
+
 (defn- cmd-untested [args opts]
   (let [{:keys [attrs out]} (db/with-db db/load-graph)
         keep? (arg-filter args)
@@ -450,6 +472,7 @@ recipes:
                      "affected" (cmd-affected args opts)
                      "dead"     (cmd-dead args opts)
                      "untested" (cmd-untested args opts)
+                     "describe" (cmd-describe args opts)
                      "q"        (cmd-q args opts)
                      "schema" (cmd-schema args opts)
                      "help"   (do (println help) 0)
