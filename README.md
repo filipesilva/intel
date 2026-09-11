@@ -16,6 +16,10 @@ it works on any checkout without deps or a REPL, and
 bbin install io.github.filipesilva/intel
 ```
 
+intel runs the `clj-kondo` binary on your PATH, so
+[install it](https://github.com/clj-kondo/clj-kondo/blob/master/doc/install.md)
+too.
+
 ## Use
 
 Build the database once per checkout state:

@@ -3,7 +3,9 @@
   (:require [babashka.fs :as fs]
             [babashka.pods :as pods]
             [babashka.process :as p]
+            [cheshire.core :as json]
             [clojure.edn :as edn]
+            [clojure.java.io :as io]
             [clojure.string :as str]
             [intel.graph :as graph]))
 
@@ -131,18 +133,46 @@
 (defn- sym->ns-ent [s]
   {:sym s :ns (if-let [n (namespace s)] (symbol n) s)})
 
-(def ^:private kondo-pod-version "2025.07.26")
+(def ^:private kondo-config
+  {:analysis      true
+   :skip-comments true
+   :output        {:format :json}
+   :lint-as       {'clojure.test.check.clojure-test/defspec
+                   'clojure.test/deftest}})
+
+(def ^:private symbol-keys [:ns :name :to :from :from-var :defined-by])
+
+(defn- symbolize [m]
+  (reduce (fn [m k] (if-let [v (m k)] (assoc m k (symbol v)) m)) m symbol-keys))
+
+(defn- kondo-analysis
+  "clj-kondo :analysis for paths, via the binary's JSON output. The pod
+  speaks EDN, and a var named like /-clause (metabase has one) prints as a
+  token no EDN reader accepts; JSON carries symbols as strings."
+  [paths]
+  (let [bin  (or (fs/which "clj-kondo")
+                 (throw (ex-info "clj-kondo not found on PATH; install it: https://github.com/clj-kondo/clj-kondo/blob/master/doc/install.md"
+                                 {:intel/exit 2})))
+        proc (p/process (vec (concat [(str bin) "--lint"] paths
+                                     ["--parallel" "--config" (pr-str kondo-config)]))
+                        {:err :string})
+        out  (with-open [r (io/reader (:out proc))]
+               (json/parse-stream r true))
+        {:keys [exit err]} @proc]
+    ;; 2 and 3 mean findings, which analysis does not care about
+    (when-not (contains? #{0 2 3} exit)
+      (throw (ex-info (str "clj-kondo failed: " (str/trim (str err))) {:intel/exit 2})))
+    (-> (:analysis out)
+        (update :var-definitions #(map symbolize %))
+        (update :var-usages #(map symbolize %))
+        (update :namespace-definitions #(map symbolize %)))))
 
 (defn file-usages
   "clj-kondo var-usage positions for one file: {[row col] -> fq-sym}.
   Every usage is included, clojure.core macros too, so callers can both
   resolve symbols and recognize control forms by position."
   [file]
-  (pods/load-pod 'clj-kondo/clj-kondo kondo-pod-version)
-  (let [run!   (requiring-resolve 'pod.borkdude.clj-kondo/run!)
-        usages (-> (run! {:lint [(str file)]
-                          :config {:analysis true :skip-comments true}})
-                   :analysis :var-usages)]
+  (let [usages (:var-usages (kondo-analysis [(str file)]))]
     (reduce (fn [m u]
               (let [pos [(:name-row u) (:name-col u)]
                     fq  (graph/fq (:to u) (:name u))
@@ -159,16 +189,7 @@
 (defn analyse!
   "Rebuild the db from clj-kondo analysis of paths. Returns summary counts."
   [paths]
-  (pods/load-pod 'clj-kondo/clj-kondo kondo-pod-version)
-  (let [run!     (requiring-resolve 'pod.borkdude.clj-kondo/run!)
-        analysis (:analysis
-                  (run! {:lint paths
-                         :config {:analysis      true
-                                  :skip-comments true
-                                  :lint-as
-                                  {'clojure.test.check.clojure-test/defspec
-                                   'clojure.test/deftest}}}))
-        {:keys [var-definitions var-usages namespace-definitions]} analysis
+  (let [{:keys [var-definitions var-usages namespace-definitions]} (kondo-analysis paths)
         ;; clj-kondo echoes the lint-path spelling in :filename; git diff
         ;; --relative reports cwd-relative, so normalize both to match.
         base     (fs/cwd)
